@@ -15,7 +15,7 @@ import pickle
 import sys
 sys.path = [pp for pp in sys.path if not '/home/wf541/.local' in pp]
 from copy import deepcopy
-from stable_baselines3.ddpg import MlpPolicy
+# from stable_baselines3.ddpg import MlpPolicy
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3 import PPO, DDPG
 from torch import nn
@@ -86,8 +86,10 @@ def get_training_environment(cfg: DictConfig, save_dir: str):
     )
 
 def get_evaluation_paths(cfg: DictConfig):
-    episode_length=cfg['episode_length']
-    nepisodes = cfg['num_out_of_sample_path']
+    #episode_length=cfg['episode_length']
+    #nepisodes = cfg['num_out_of_sample_path']
+    episode_length= 5
+    nepisodes = 10
     mu=cfg['gbm_mu'] / 252
     sigma=cfg['gbm_sigma'] / np.sqrt(252)
     r=cfg['gbm_r'] / 252
@@ -161,15 +163,15 @@ def main():
     for k, v in cfg.items():
         logging.info(f"\t{k} = {v}")
 
-    n_actions = env.action_space.shape[-1]
-    action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
+    # n_actions = env.action_space.shape[-1]
+    # action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
-    # policy_kwargs = {"activation_fn": nn.ReLU, "net_arch": [32]*5}
-    # action_noise = OUnoise(mean=np.zeros(1, ), sigma=cfg['OUstd'] * np.ones(1, ), theta=cfg['OUtheta'], dt=cfg['OUdt'])
-    # DDPG_HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'tau', 'train_freq', 'gradient_steps', 'learning_starts')
-    # ddpg_hyperparams_dict = {k: cfg[k] for k in DDPG_HYPERPARAM_KEYS}
-    model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1)
-    # model = DDPG(MlpPolicy, env, action_noise=action_noise, verbose=1, policy_kwargs=policy_kwargs, **ddpg_hyperparams_dict)
+    policy_kwargs = {"activation_fn": nn.ReLU, "net_arch": [32]*5}
+    action_noise = OUnoise(mean=np.zeros(1, ), sigma=cfg['OUstd'] * np.ones(1, ), theta=cfg['OUtheta'], dt=cfg['OUdt'])
+    DDPG_HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'tau', 'train_freq', 'gradient_steps', 'learning_starts')
+    ddpg_hyperparams_dict = {k: cfg[k] for k in DDPG_HYPERPARAM_KEYS}
+    # model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1)
+    model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, policy_kwargs=policy_kwargs, **ddpg_hyperparams_dict)
     logger_callback = LoggerCallback(save_path=os.path.join(save_dir, "rl_logs.json"), save_freq=1000)
     action_fn_observation_grid = get_evaluation_paths(cfg)
     # action_fn_observation_grid: List[Valuation] = get_observation_grid(env)
@@ -178,16 +180,16 @@ def main():
     with open(os.path.join(save_dir, "eval_path.pkl"), "w+b") as f:
         pickle.dump(action_fn_observation_grid, f)
 
-    evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=os.path.join(save_dir, "action_fn_logs.h5"), save_freq=10_000)
+    evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=os.path.join(save_dir, "action_fn_logs.h5"), save_freq=10)
 
     # checkpoint_callback = CheckpointCallback(save_freq=20_000, save_path=save_dir, name_prefix='model_checkpoint')
     # N_YEARS_TRAINING = 50_000
     # TOTAL_TRAINING_TIMESTEPS = N_YEARS_TRAINING*TRADING_DAYS_IN_YEAR
     # model.learn(total_timesteps=cfg['total_training_timesteps'], callback=[logger_callback, action_fn_callback])
-    model.learn(total_timesteps=cfg['total_training_timesteps'], callback=evaluator_callback)
+    model.learn(total_timesteps=cfg['total_training_timesteps'], callback=[logger_callback, evaluator_callback])
 
     with open(os.path.join(save_dir, "training_env.pkl"), "w+b") as f:
-        pickle.dump(env, f)
+         pickle.dump(env, f)
     model.save(os.path.join(save_dir, "fully_trained_model"))
     time.sleep(300)
     make_post_training_plots(save_dir, cfg)

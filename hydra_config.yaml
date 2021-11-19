@@ -31,7 +31,7 @@ action_max: 100
 
 # Parameters relating to training
 data_reuse_num_episodes: 10000
-total_training_timesteps: 12500000
+total_training_timesteps: 12500
 learning_rate: 0.001 # PPO, DQN
 
 # PPO model hyperparameters -- these should be iterated over (on the command-line) using multirun
