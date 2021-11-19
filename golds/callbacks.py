@@ -98,8 +98,8 @@ class EvaluationFunctionCallBack(BaseCallback):
         self.save_freq = save_freq
         self.cfg = cfg
         self.env = env
-        if env._action_space_continuity == Continuity.CONTINUOUS:
-            raise NotImplementedError()
+        # if env._action_space_continuity == Continuity.CONTINUOUS:
+            # raise NotImplementedError()
 
         self.obs_input = observation_grid
         self.neposides = self.obs_input['episode_idx'].max() + 1
@@ -119,6 +119,8 @@ class EvaluationFunctionCallBack(BaseCallback):
                     pred = self.agent.predict(obs)[0].T[0] + self.cfg['action_min']  # TODO do not hack this
                 elif self.env._action_space_continuity == Continuity.INT:
                     pred = self.agent.predict(obs)[0] + self.cfg['action_min'] # TODO do not hack this
+                elif self.env._action_space_continuity == Continuity.CONTINUOUS:
+                    pred = self.agent.predict(obs)[0].T[0]
                 prev_pos = pred
                 preds.append(pred)
 

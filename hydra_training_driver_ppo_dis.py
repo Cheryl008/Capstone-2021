@@ -22,7 +22,7 @@ def main(cfg: DictConfig):
             "singularity", "exec",
             "--overlay", f"{OVERLAY_FILEPATH}:ro",
             SINGULARITY_IMAGE_FILEPATH,
-            "/bin/bash", "-c", f"source /ext3/env.sh; python /scratch/wf541/Capstone-2021/train_ppo.py {hydra_config_filepath}"
+            "/bin/bash", "-c", f"source /ext3/env.sh; python /scratch/wf541/Capstone-2021/train_ppo_dis.py {hydra_config_filepath}"
         ]
     )
 
