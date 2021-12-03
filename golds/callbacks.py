@@ -140,6 +140,6 @@ class EvaluationFunctionCallBack(BaseCallback):
     def calculate_reward_vectorize(res, cfg):
         res['delta_wealth'] = res['holdings'].shift() * res['price'] + 100 * res['call_price'] - (res['holdings'] * res['price'] + 100 * res['call_price']).shift()
         res.loc[res['normalized_time']==res['normalized_time'].min(), 'delta_wealth'] = 0.
-        res['reward'] = res['delta_wealth'] ** 2 * -0.5 * cfg['reward_kappa']  # this is reward function
+        res['reward'] = res['delta_wealth'] ** 2 * -0.5 * cfg['reward_kappa']+res['delta_wealth'] # this is reward function
         return res
 

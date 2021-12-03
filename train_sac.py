@@ -17,7 +17,7 @@ sys.path = [pp for pp in sys.path if not '/home/wf541/.local' in pp]
 from copy import deepcopy
 # from stable_baselines3.ddpg import MlpPolicy
 from stable_baselines3.common.env_checker import check_env
-from stable_baselines3 import PPO, DDPG
+from stable_baselines3 import SAC
 from torch import nn
 import time
 from typing import List
@@ -88,8 +88,6 @@ def get_training_environment(cfg: DictConfig, save_dir: str):
 def get_evaluation_paths(cfg: DictConfig):
     episode_length=cfg['episode_length']
     nepisodes = cfg['num_out_of_sample_path']
-    #episode_length= 5
-    #nepisodes = 10
     mu=cfg['gbm_mu'] / 252
     sigma=cfg['gbm_sigma'] / np.sqrt(252)
     r=cfg['gbm_r'] / 252
@@ -167,12 +165,12 @@ def main():
     # action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions))
 
     policy_kwargs = {"activation_fn": nn.ReLU, "net_arch": [32]*5}
-    action_noise = OUnoise(mean=np.zeros(1, ), sigma=cfg['OUstd'] * np.ones(1, ), theta=cfg['OUtheta'], dt=cfg['OUdt'])
-    DDPG_HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'tau', 'train_freq', 'gradient_steps', 'learning_starts')
-    ddpg_hyperparams_dict = {k: cfg[k] for k in DDPG_HYPERPARAM_KEYS}
+    # action_noise = OUnoise(mean=np.zeros(1, ), sigma=cfg['OUstd'] * np.ones(1, ), theta=cfg['OUtheta'], dt=cfg['OUdt'])
+    SAC_HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'tau', 'train_freq', 'gradient_steps', 'learning_starts')
+    sac_hyperparams_dict = {k: cfg[k] for k in SAC_HYPERPARAM_KEYS}
     # model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1)
-    model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, policy_kwargs=policy_kwargs, **ddpg_hyperparams_dict)
-    logger_callback = LoggerCallback(save_path=os.path.join(save_dir, "rl_logs.json"), save_freq=100)
+    model = SAC("MlpPolicy", env, verbose=1, policy_kwargs=policy_kwargs, **sac_hyperparams_dict)
+    logger_callback = LoggerCallback(save_path=os.path.join(save_dir, "rl_logs.json"), save_freq=10000)
     action_fn_observation_grid = get_evaluation_paths(cfg)
     # action_fn_observation_grid: List[Valuation] = get_observation_grid(env)
     # action_fn_callback = ActionFunctionCallback(model, env, action_fn_observation_grid, save_path=os.path.join(save_dir, "action_fn_logs.h5"), save_freq=10_000)
