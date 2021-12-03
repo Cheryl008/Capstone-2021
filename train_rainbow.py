@@ -31,6 +31,8 @@ from golds.reward_functions import NaiveHedgingRewardFunction, RewardFunction
 from golds.tcost import NaiveTransactionCostModel
 from golds.visualize import make_post_training_plots
 
+from golds.Rainbow import RainbowAgent
+
 def print_usage():
     print("Usage: python3 train_dqn.py <path_to_config_yaml>")
 
@@ -156,29 +158,33 @@ def main():
     for k, v in cfg.items():
         logging.info(f"\t{k} = {v}")
 
-    policy_kwargs = {"activation_fn": nn.ReLU, "net_arch": [32]*5}
+    # policy_kwargs = {"activation_fn": nn.ReLU, "net_arch": [32]*5}
 
-    DQN_HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'max_grad_norm')
-    dqn_hyperparams_dict = {k: cfg[k] for k in DQN_HYPERPARAM_KEYS}    
-    model = DQN("MlpPolicy", env, verbose=1, policy_kwargs=policy_kwargs, **dqn_hyperparams_dict)
+    # DQN_HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'max_grad_norm')
+    # dqn_hyperparams_dict = {k: cfg[k] for k in DQN_HYPERPARAM_KEYS}  
+    memory_size = 10000
+    batch_size = 128
+    target_update = 1000
+    model = RainbowAgent(env, memory_size, batch_size, target_update)
 
-    logger_callback = LoggerCallback(save_path=os.path.join(save_dir, "rl_logs.json"), save_freq=1)
+    # logger_callback = LoggerCallback(save_path=os.path.join(save_dir, "rl_logs.json"), save_freq=1000)
     action_fn_observation_grid = get_evaluation_paths(cfg)
     logging.info("Getting eval paths")
     with open(os.path.join(save_dir, "eval_path.pkl"), "w+b") as f:
         pickle.dump(action_fn_observation_grid, f)
 
-    evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=os.path.join(save_dir, "action_fn_logs.h5"), save_freq=100)
+    # evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=os.path.join(save_dir, "action_fn_logs.h5"), save_freq=10_000)
     # action_fn_observation_grid: List[Valuation] = get_observation_grid(env)
     # action_fn_callback = ActionFunctionCallback(model, env, action_fn_observation_grid, save_path=os.path.join(save_dir, "action_fn_logs.h5"), save_freq=10_000)
     # checkpoint_callback = CheckpointCallback(save_freq=20_000, save_path=save_dir, name_prefix='model_checkpoint')
     # N_YEARS_TRAINING = 50_000
     # TOTAL_TRAINING_TIMESTEPS = N_YEARS_TRAINING*TRADING_DAYS_IN_YEAR
-    model.learn(total_timesteps=cfg['total_training_timesteps'], callback=[logger_callback, evaluator_callback])
+    savePath = os.path.join(save_dir, "action_fn_logs.h5")
+    model.train(cfg['total_training_timesteps'], env, action_fn_observation_grid, cfg, 10000, 200, savePath)
 
     with open(os.path.join(save_dir, "training_env.pkl"), "w+b") as f:
         pickle.dump(env, f)
-    model.save(os.path.join(save_dir, "fully_trained_model"))
+    # model.save(os.path.join(save_dir, "fully_trained_model"))
     time.sleep(300)
     make_post_training_plots(save_dir, cfg)
 
