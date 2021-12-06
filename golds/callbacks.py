@@ -14,6 +14,8 @@ from stable_baselines3.common import logger
 from .contracts import Valuation
 from .env import AmericanOptionEnv, Continuity
 
+from scipy.stats import norm
+
 
 def _json_encode_numpy(val: Any) -> Any:
     if isinstance(val, np.integer):
@@ -90,7 +92,7 @@ class ActionFunctionCallback(BaseCallback):
         return True
 
 class EvaluationFunctionCallBack(BaseCallback):
-    def __init__(self, agent: PPO, env: AmericanOptionEnv, observation_grid: pd.DataFrame, cfg, save_path: str, save_freq: int, verbose: int = 0):
+    def __init__(self, agent: PPO, env: AmericanOptionEnv, observation_grid: pd.DataFrame, cfg, save_path: List[str], save_freq: int, verbose: int = 0):
         super(EvaluationFunctionCallBack, self).__init__()
         self.agent = agent
         self.universe = env.pricing_source.universe
@@ -113,7 +115,7 @@ class EvaluationFunctionCallBack(BaseCallback):
             preds = []
             for _t in sorted(self.obs_input['normalized_time'].unique()):
                 prev_pos = np.ones(self.neposides) * self.cfg['init_stock_holdings'] if prev_pos is None else prev_pos
-                obs = np.hstack([self.obs_input.loc[self.obs_input['normalized_time'] == _t, ['price', 'all_1', 'call_price', 'normalized_time',]].values,
+                obs = np.hstack([self.obs_input.loc[self.obs_input['normalized_time'] == _t, ['price', 'call_price', 'all_1', 'normalized_time',]].values,
                     prev_pos[:, np.newaxis], np.zeros((self.neposides, 2))])
                 if self.env._action_space_continuity == Continuity.DISCRETE:
                     pred = self.agent.predict(obs)[0].T[0] + self.cfg['action_min']  # TODO do not hack this
@@ -130,7 +132,49 @@ class EvaluationFunctionCallBack(BaseCallback):
 
             # we serialize only holdings and reward, due to the deterministic nature of paths we generated
             action_fn_df: pd.DataFrame = self.obs_input[['holdings', 'reward']]
-            action_fn_df.to_hdf(self.save_path, mode='a', key='action_fn_logs', append=True, format='table')
+            action_fn_df.to_hdf(self.save_path[0], mode='a', key='action_fn_logs', append=True, format='table')
+
+            stock_price_list = [98, 100, 102]
+            frame_list = []
+
+            for price in stock_price_list:   
+                mu = 0.02 / 252
+                sigma = 0.09 / np.sqrt(252)
+                r = 0.0 / 252
+
+                stock_holdings = np.arange(-100,-19)
+                obs_length = len(stock_holdings)
+                stock_price = np.repeat(price, obs_length)
+                obs_3 = np.repeat(1, obs_length)
+                time_to_maturity = np.repeat(49/252, obs_length)
+                obs_6 = np.repeat(0, obs_length)
+                obs_7 = np.repeat(0, obs_length)
+                t = 49/50
+                
+                res = pd.DataFrame.from_dict({'stock_price': stock_price, 'obs_3': obs_3, 'stock_holdings': stock_holdings, 
+                                        'time_to_maturity':time_to_maturity, 'obs_6': obs_6,'obs_7': obs_7, 't':t})
+                res['delta'] = norm.cdf((np.log(res['stock_price'] / 100) + (r * 252 + 0.5 * 252 * sigma ** 2) * (1 - res['time_to_maturity'])) /\
+                    np.sqrt(252) / sigma / np.sqrt((1 - res['time_to_maturity'])))
+                res['call_price'] = res['stock_price'] * res['delta'] - 100 * np.exp(-r * 252 * (1 - res['time_to_maturity'])) * norm.cdf((np.log(res['stock_price'] / 100)\
+                    + (r * 252 - 0.5 * 252 * sigma ** 2) * (1 - res['time_to_maturity'])) / np.sqrt(252) / sigma / np.sqrt((1 - res['time_to_maturity'])))
+                
+                obs = res[["stock_price","call_price","obs_3","t","stock_holdings","obs_6","obs_7"]].to_numpy()
+
+                if self.env._action_space_continuity == Continuity.DISCRETE:
+                    actions = self.agent.predict(obs)[0].T[0] + self.cfg['action_min']  # TODO do not hack this
+                elif self.env._action_space_continuity == Continuity.INT:
+                    actions = self.agent.predict(obs)[0] + self.cfg['action_min'] # TODO do not hack this
+                elif self.env._action_space_continuity == Continuity.CONTINUOUS:
+                    actions = self.agent.predict(obs)[0].T[0]
+                
+                res['actions'] = actions
+                
+                frame_list.append(res)
+            
+            policy_result: pd.DataFrame = pd.concat(frame_list)
+            logging.info(f"Hello")
+            logging.info(f"{policy_result}")
+            policy_result.to_hdf(self.save_path[1], mode='w', key='policy_result_logs', format='table')
 
             logging.info(f"ActionFunctionCallback took {pd.Timestamp.now()-start} to evaluate action function on observation grid")
 
@@ -140,6 +184,6 @@ class EvaluationFunctionCallBack(BaseCallback):
     def calculate_reward_vectorize(res, cfg):
         res['delta_wealth'] = res['holdings'].shift() * res['price'] + 100 * res['call_price'] - (res['holdings'] * res['price'] + 100 * res['call_price']).shift()
         res.loc[res['normalized_time']==res['normalized_time'].min(), 'delta_wealth'] = 0.
-        res['reward'] = res['delta_wealth'] ** 2 * -0.5 * cfg['reward_kappa']+res['delta_wealth'] # this is reward function
+        res['reward'] = res['delta_wealth'] ** 2 * -0.5 * cfg['reward_kappa'] # +res['delta_wealth'] # this is reward function
         return res
 

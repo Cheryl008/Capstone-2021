@@ -120,21 +120,21 @@ class NaiveHedgingRewardFunction(RewardFunction):
 
         curr_holdings[cash] += revenue
 
-        logging.info(f"Previous Prices: {self._prev_prices}")
-        logging.info(f"Current Prices {prices}")
-        logging.info(f"Previous Holdings: {self._prev_holdings}")
-        logging.info(f"Current Holdings {curr_holdings}")
+        # logging.info(f"Previous Prices: {self._prev_prices}")
+        # logging.info(f"Current Prices {prices}")
+        # logging.info(f"Previous Holdings: {self._prev_holdings}")
+        # logging.info(f"Current Holdings {curr_holdings}")
 
         prev_wealth = _value_of_holdings(self._prev_holdings, self._prev_prices)
         curr_wealth = _value_of_holdings(curr_holdings, prices)
         delta_wealth = curr_wealth - prev_wealth
         # the scale of kappa should be proportional to inverse of delta wealth
-        reward = - (self.kappa/2)*(delta_wealth ** 2) + delta_wealth
+        reward = - (self.kappa/2)*(delta_wealth ** 2) # + delta_wealth
 
-        logging.info(f"Previous Wealth: {prev_wealth}")
-        logging.info(f"Current Wealth {curr_wealth}")
-        logging.info(f"Delta Wealth {delta_wealth}")
-        logging.info(f"Reward {reward}")
+        # logging.info(f"Previous Wealth: {prev_wealth}")
+        # logging.info(f"Current Wealth {curr_wealth}")
+        # logging.info(f"Delta Wealth {delta_wealth}")
+        # logging.info(f"Reward {reward}")
 
 
         # (Optional) reward clipping

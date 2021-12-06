@@ -91,7 +91,7 @@ def get_evaluation_paths(cfg: DictConfig):
     res = pd.DataFrame.from_dict({'episode_idx': np.repeat(np.arange(nepisodes), episode_length), 'randn': randns})
     res['time_to_maturity'] = np.tile(1 + np.arange(episode_length), nepisodes) / 252
     res['cum_randn'] = res.groupby('episode_idx')['randn'].cumsum()
-    res['price'] = res['cum_randn'] * sigma + (mu - sigma ** 2 / 2 * res['time_to_maturity'] * 252)
+    res['price'] = res['cum_randn'] * sigma + (mu - sigma ** 2 / 2) * res['time_to_maturity'] * 252
     res['price'] = 100 * np.exp(res['price'])
     res['all_1'] = 1.
     res['normalized_time'] = np.tile(1 + np.arange(episode_length), nepisodes) / episode_length
@@ -162,13 +162,13 @@ def main():
     dqn_hyperparams_dict = {k: cfg[k] for k in DQN_HYPERPARAM_KEYS}    
     model = DQN("MlpPolicy", env, verbose=1, policy_kwargs=policy_kwargs, **dqn_hyperparams_dict)
 
-    logger_callback = LoggerCallback(save_path=os.path.join(save_dir, "rl_logs.json"), save_freq=1)
+    logger_callback = LoggerCallback(save_path=os.path.join(save_dir, "rl_logs.json"), save_freq=100000)
     action_fn_observation_grid = get_evaluation_paths(cfg)
     logging.info("Getting eval paths")
     with open(os.path.join(save_dir, "eval_path.pkl"), "w+b") as f:
         pickle.dump(action_fn_observation_grid, f)
 
-    evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=os.path.join(save_dir, "action_fn_logs.h5"), save_freq=100)
+    evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=[os.path.join(save_dir, "action_fn_logs.h5"), os.path.join(save_dir, "policy_result_logs.h5")], save_freq=10000)
     # action_fn_observation_grid: List[Valuation] = get_observation_grid(env)
     # action_fn_callback = ActionFunctionCallback(model, env, action_fn_observation_grid, save_path=os.path.join(save_dir, "action_fn_logs.h5"), save_freq=10_000)
     # checkpoint_callback = CheckpointCallback(save_freq=20_000, save_path=save_dir, name_prefix='model_checkpoint')

@@ -35,7 +35,7 @@ from stable_baselines3.common.noise import OrnsteinUhlenbeckActionNoise as OUnoi
 
 
 def print_usage():
-    print("Usage: python3 train_ddpg.py <path_to_config_yaml>")
+    print("Usage: python3 train_sac.py <path_to_config_yaml>")
 
 
 def get_training_environment(cfg: DictConfig, save_dir: str):
@@ -178,7 +178,7 @@ def main():
     with open(os.path.join(save_dir, "eval_path.pkl"), "w+b") as f:
         pickle.dump(action_fn_observation_grid, f)
 
-    evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=os.path.join(save_dir, "action_fn_logs.h5"), save_freq=100)
+    evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=[os.path.join(save_dir, "action_fn_logs.h5"), os.path.join(save_dir, "policy_result_logs.h5")], save_freq=100)
 
     # checkpoint_callback = CheckpointCallback(save_freq=20_000, save_path=save_dir, name_prefix='model_checkpoint')
     # N_YEARS_TRAINING = 50_000
