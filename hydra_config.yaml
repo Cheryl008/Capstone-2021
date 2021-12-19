@@ -11,6 +11,8 @@ hydra:
     dir: /scratch/wf541/multirun/${now:%Y-%m-%d}/${now:%H:%M:%S}
     subdir: ${hydra.job.override_dirname}
 
+model: DDPG
+
 # Parameters relating to stock and option prices and quantities
 init_stock_holdings: 0  # let's not hint the algorithm anything and see if it can find the hedging
 init_option_holdings: 100
@@ -23,7 +25,7 @@ episode_length: 50
 num_out_of_sample_path: 10000
 
 # Parameters relating to reward function and action space
-reward_kappa: 0.01 # *
+reward_kappa: 0.01
 reward_clip_min: -200  # calculating reward - if stock prices goes up or down to 2 or 3 sigmas, what the reward would be *
 reward_clip_max: 200
 action_min: -100
@@ -32,23 +34,23 @@ action_max: 100
 # Parameters relating to training
 data_reuse_num_episodes: 10000
 total_training_timesteps: 12500000
-learning_rate: 0.001 # DQN
+learning_rate: 0.001
 
 # PPO model hyperparameters -- these should be iterated over (on the command-line) using multirun
-batch_size: 32 # DQN
-gamma: 0.99 # DQN
-tau: 0.005 # DQN
-gradient_steps: -1 # DQN, DDPG
-max_grad_norm: 0.5 # DQN
-net_arch_length: 5 # DQN
-net_arch_size: 32 # DQN
+batch_size: 32
+gamma: 0.99
+tau: 0.005
+gradient_steps: -1
+max_grad_norm: 0.5
+net_arch_length: 5
+net_arch_size: 32
 
-train_freq: 1 # DDPG
-learning_starts: 500 # DDPG
-net_arch: [32, 32, 32, 32, 32] # DDPG
+train_freq: 1
+learning_starts: 500
+net_arch: [32, 32, 32, 32, 32]
 
-OUstd: 50 # DDPG
-OUtheta: 0.00 # DDPG < 1
-OUdt: 0.3 # DDPG
+OUstd: 50
+OUtheta: 0.00
+OUdt: 0.3
 
 
