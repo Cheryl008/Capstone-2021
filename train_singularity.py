@@ -16,11 +16,12 @@ import sys
 sys.path = [pp for pp in sys.path if not '/home/wf541/.local' in pp]
 from copy import deepcopy
 from stable_baselines3.common.env_checker import check_env
-from stable_baselines3 import DQN
+from stable_baselines3 import DQN, DDPG, SAC, PPO
 from torch import nn
 from typing import List
 from omegaconf import OmegaConf, DictConfig
 import time
+from stable_baselines3.common.noise import OrnsteinUhlenbeckActionNoise as OUnoise, NormalActionNoise
 
 from golds.callbacks import ActionFunctionCallback, LoggerCallback, EvaluationFunctionCallBack
 from golds.contracts import Currency, Stock, Option, OptionFlavor, OptionStyle, Holdings, Valuation
@@ -32,7 +33,7 @@ from golds.tcost import NaiveTransactionCostModel
 from golds.visualize import make_post_training_plots
 
 def print_usage():
-    print("Usage: python3 train_dqn.py <path_to_config_yaml>")
+    print("Usage: python3 train_singularity.py model <path_to_config_yaml>")
 
 def get_training_environment(cfg: DictConfig, save_dir: str):
     aapl = Stock(ticker="AAPL", is_tradable=True)
@@ -64,7 +65,14 @@ def get_training_environment(cfg: DictConfig, save_dir: str):
     reward_clip_range = (cfg['reward_clip_min'], cfg['reward_clip_max'])
     reward_records_save_path = os.path.join(save_dir, "reward_history.h5")
 
-    valid_actions = {'lo': cfg['action_min'], 'hi': cfg['action_max']} # list(range(cfg['action_min'], cfg['action_max']+1)) 
+    if cfg['model'] == "DQN":
+        valid_actions = {'lo': cfg['action_min'], 'hi': cfg['action_max']} 
+    elif cfg['model'] == "DDPG":
+        valid_actions = (cfg['action_min'], cfg['action_max'])
+    elif cfg['model'] == "SAC":
+        valid_actions = (cfg['action_min'], cfg['action_max'])
+    elif cfg['model'] == "PPO":
+        valid_actions = list(range(cfg['action_min'], cfg['action_max']+1))
 
     reward_function: RewardFunction = NaiveHedgingRewardFunction(
         kappa=cfg['reward_kappa'],
@@ -158,9 +166,23 @@ def main():
 
     policy_kwargs = {"activation_fn": nn.ReLU, "net_arch": [cfg["net_arch_size"]] * cfg["net_arch_length"]}
 
-    DQN_HYPERPARAM_KEYS = ('learning_rate', 'batch_size', 'tau', 'gamma', 'gradient_steps', 'max_grad_norm')
-    dqn_hyperparams_dict = {k: cfg[k] for k in DQN_HYPERPARAM_KEYS}    
-    model = DQN("MlpPolicy", env, verbose=2, policy_kwargs=policy_kwargs, **dqn_hyperparams_dict)
+    if cfg['model'] == "DQN":
+        HYPERPARAM_KEYS = ('learning_rate', 'batch_size', 'tau', 'gamma', 'gradient_steps', 'max_grad_norm')
+        hyperparams_dict = {k: cfg[k] for k in HYPERPARAM_KEYS}
+        model = DQN("MlpPolicy", env, verbose=1, policy_kwargs=policy_kwargs, **hyperparams_dict)
+    elif cfg['model'] == "DDPG":
+        action_noise = OUnoise(mean=np.zeros(1, ), sigma=cfg['OUstd'] * np.ones(1, ), theta=cfg['OUtheta'], dt=cfg['OUdt'])
+        HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'tau', 'train_freq', 'gradient_steps', 'learning_starts')
+        hyperparams_dict = {k: cfg[k] for k in HYPERPARAM_KEYS}
+        model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1, policy_kwargs=policy_kwargs, **hyperparams_dict)
+    elif cfg['model'] == "SAC":
+        HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'learning_starts')
+        hyperparams_dict = {k: cfg[k] for k in SAC_HYPERPARAM_KEYS}
+        model = SAC("MlpPolicy", env, verbose=1, policy_kwargs=policy_kwargs, **hyperparams_dict)
+    elif cfg['model'] == "PPO":
+        HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'gae_lambda', 'ent_coef', 'vf_coef', 'max_grad_norm')
+        hyperparams_dict = {k: cfg[k] for k in PPO_HYPERPARAM_KEYS}
+        model = PPO("MlpPolicy", env, verbose=1, policy_kwargs=policy_kwargs, **hyperparams_dict)
 
     logger_callback = LoggerCallback(save_path=os.path.join(save_dir, "rl_logs.json"), save_freq=10000)
     action_fn_observation_grid = get_evaluation_paths(cfg)

@@ -16,7 +16,7 @@ import itertools
 
 ActionsConfig = Union[List[int], Mapping[Asset, List[int]], Tuple[float, float], Mapping[Asset, Tuple[float]], Dict[str, int]]
 
-Continuity = Enum("Continuity", "CONTINUOUS DISCRETE INT")
+Continuity = Enum("Continuity", "CONTINUOUS MULTIDISCRETE DISCRETE")
 
 
 class AmericanOptionEnv(Env):
@@ -55,7 +55,7 @@ class AmericanOptionEnv(Env):
         except ValueError:
             raise ValueError("If actions_config is a list, it must be a list of ints")
 
-        return Continuity.DISCRETE
+        return Continuity.MULTIDISCRETE
 
     def _validate_actions_config_dictionary(self, actions_config: Dict) -> Continuity:
         try:
@@ -65,7 +65,7 @@ class AmericanOptionEnv(Env):
         except ValueError:
             raise ValueError("If actions_config is a dictionary, it must be a dictionary with two elements, low and high")
 
-        return Continuity.INT
+        return Continuity.DISCRETE
 
     def _validate_actions_config_mapping(self, actions_config: Mapping) -> Continuity:
         assert sorted(actions_config.keys()) == sorted(self._tradable_universe), "If action_config is a mapping, its keyset must be equal to the tradable universe"
@@ -98,7 +98,7 @@ class AmericanOptionEnv(Env):
                 """
             )
 
-        return (Continuity.DISCRETE if values_all_sequence_of_ints else Continuity.CONTINUOUS)
+        return (Continuity.MULTIDISCRETE if values_all_sequence_of_ints else Continuity.CONTINUOUS)
 
     def _validate_actions_config(self, actions_config: ActionsConfig) -> Continuity:
         '''
@@ -119,7 +119,7 @@ class AmericanOptionEnv(Env):
     def _initialize_action_space(self, actions_config: ActionsConfig):
         self._action_space_continuity = self._validate_actions_config(actions_config)
 
-        if self._action_space_continuity == Continuity.DISCRETE:
+        if self._action_space_continuity == Continuity.MULTIDISCRETE:
             # NOTE: `gym.spaces.MultiDiscrete` takes a sequence of positive
             # integers `a_maxs` and generates a discrete action space which is the
             # product of `([0, ..., a_max-1] for a_max in a_maxs)`
@@ -146,7 +146,7 @@ class AmericanOptionEnv(Env):
 
             action_space: spaces.Space = spaces.MultiDiscrete([len(_actions[asset]) for asset in self._tradable_universe])
         
-        elif self._action_space_continuity == Continuity.INT:
+        elif self._action_space_continuity == Continuity.DISCRETE:
             _actions: List[Tuple] = []
 
             assert isinstance(actions_config, Dict)
@@ -246,7 +246,7 @@ class AmericanOptionEnv(Env):
     def action_array_to_dict(self, action: np.ndarray, round_lots: bool = False) -> Trade:
         # assert action.shape == (len(self._tradable_universe),)
 
-        if self._action_space_continuity == Continuity.DISCRETE:
+        if self._action_space_continuity == Continuity.MULTIDISCRETE:
             # NOTE: Remember that, by the semantics of `spaces.MultiDiscrete`,
             # the `action` argument to this function will a numpy.ndarray of
             # shape `(len(self._tradable_universe),)`.  The i-th value in the
@@ -259,7 +259,7 @@ class AmericanOptionEnv(Env):
                 asset: self._actions[asset][action_idx]
                 for asset, action_idx in zip(self._tradable_universe, action)
             }
-        elif self._action_space_continuity == Continuity.INT:
+        elif self._action_space_continuity == Continuity.DISCRETE:
             result_dic = {}
             for i in range(len(self._actions[action])):
                 asset = self._tradable_universe[i]
@@ -273,7 +273,7 @@ class AmericanOptionEnv(Env):
                 return dict(zip(self._tradable_universe, action))
 
     def action_dict_to_array(self, action: Trade) -> np.ndarray:
-        if self._action_space_continuity == Continuity.DISCRETE:
+        if self._action_space_continuity == Continuity.MULTIDISCRETE:
             action_array = np.array([self._actions[asset].index(int(action[asset])) for asset in self._tradable_universe], dtype=np.float32)
         else:  # self._action_space_continuity == Continuity.CONTINUOUS
             action_array = np.array([action[asset] for asset in self._tradable_universe], dtype=np.float32)

@@ -117,9 +117,9 @@ class EvaluationFunctionCallBack(BaseCallback):
                 prev_pos = np.ones(self.neposides) * self.cfg['init_stock_holdings'] if prev_pos is None else prev_pos
                 obs = np.hstack([self.obs_input.loc[self.obs_input['normalized_time'] == _t, ['price', 'call_price', 'all_1', 'normalized_time',]].values,
                     prev_pos[:, np.newaxis], np.zeros((self.neposides, 2))])
-                if self.env._action_space_continuity == Continuity.DISCRETE:
+                if self.env._action_space_continuity == Continuity.MULTIDISCRETE:
                     pred = self.agent.predict(obs)[0].T[0] + self.cfg['action_min']  # TODO do not hack this
-                elif self.env._action_space_continuity == Continuity.INT:
+                elif self.env._action_space_continuity == Continuity.DISCRETE:
                     pred = self.agent.predict(obs)[0] + self.cfg['action_min'] # TODO do not hack this
                 elif self.env._action_space_continuity == Continuity.CONTINUOUS:
                     pred = self.agent.predict(obs)[0].T[0]
@@ -134,13 +134,14 @@ class EvaluationFunctionCallBack(BaseCallback):
             action_fn_df: pd.DataFrame = self.obs_input[['holdings', 'reward']]
             action_fn_df.to_hdf(self.save_path[0], mode='a', key='action_fn_logs', append=True, format='table')
 
+            # record the agent's performance on fixed observations, store in policy_result
             stock_price_list = [98, 100, 102]
             frame_list = []
 
             for price in stock_price_list:   
-                mu = 0.02 / 252
-                sigma = 0.09 / np.sqrt(252)
-                r = 0.0 / 252
+                mu = self.cfg['gbm_mu'] / 252
+                sigma = self.cfg['gbm_sigma'] / np.sqrt(252)
+                r = self.cfg['gbm_r'] / 252
 
                 stock_holdings = np.arange(-100,-19)
                 obs_length = len(stock_holdings)
@@ -160,9 +161,9 @@ class EvaluationFunctionCallBack(BaseCallback):
                 
                 obs = res[["stock_price","call_price","obs_3","t","stock_holdings","obs_6","obs_7"]].to_numpy()
 
-                if self.env._action_space_continuity == Continuity.DISCRETE:
+                if self.env._action_space_continuity == Continuity.MULTIDISCRETE:
                     actions = self.agent.predict(obs)[0].T[0] + self.cfg['action_min']  # TODO do not hack this
-                elif self.env._action_space_continuity == Continuity.INT:
+                elif self.env._action_space_continuity == Continuity.DISCRETE:
                     actions = self.agent.predict(obs)[0] + self.cfg['action_min'] # TODO do not hack this
                 elif self.env._action_space_continuity == Continuity.CONTINUOUS:
                     actions = self.agent.predict(obs)[0].T[0]
@@ -172,11 +173,9 @@ class EvaluationFunctionCallBack(BaseCallback):
                 frame_list.append(res)
             
             policy_result: pd.DataFrame = pd.concat(frame_list)
-            logging.info(f"Hello")
-            logging.info(f"{policy_result}")
             policy_result.to_hdf(self.save_path[1], mode='w', key='policy_result_logs', format='table')
 
-            logging.info(f"ActionFunctionCallback took {pd.Timestamp.now()-start} to evaluate action function on observation grid")
+            logging.info(f"EvaluationFunctionCallback took {pd.Timestamp.now()-start} to evaluate action function on observation grid")
 
         return True
 
@@ -184,6 +183,6 @@ class EvaluationFunctionCallBack(BaseCallback):
     def calculate_reward_vectorize(res, cfg):
         res['delta_wealth'] = res['holdings'].shift() * res['price'] + 100 * res['call_price'] - (res['holdings'] * res['price'] + 100 * res['call_price']).shift()
         res.loc[res['normalized_time']==res['normalized_time'].min(), 'delta_wealth'] = 0.
-        res['reward'] = res['delta_wealth'] ** 2 * -0.5 * cfg['reward_kappa'] # +res['delta_wealth'] # this is reward function
+        res['reward'] = res['delta_wealth'] ** 2 * -0.5 * cfg['reward_kappa'] + res['delta_wealth'] # this is reward function
         return res
 
