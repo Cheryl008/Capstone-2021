@@ -185,7 +185,7 @@ class AmericanOptionEnv(Env):
     def step(self, action):
         self._i += 1
 
-        logging.debug(f"Entering step {self._i} of {self.episode_length} | action = {action}")
+        logging.info(f"Entering step {self._i} of {self.episode_length} | action = {action}")
 
         trade: Trade = self.action_array_to_dict(action, round_lots=True)
 
@@ -207,7 +207,7 @@ class AmericanOptionEnv(Env):
 
         done = (self._i == self.episode_length) or terminate_early
 
-        logging.debug(f"Returning from step {self._i} of {self.episode_length} | observation={observation}, reward={reward}, done={done}")
+        logging.info(f"Returning from step {self._i} of {self.episode_length} | observation={observation}, reward={reward}, done={done}")
 
         return observation, reward, done, {}
 

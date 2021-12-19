@@ -15,38 +15,40 @@ hydra:
 init_stock_holdings: 0  # let's not hint the algorithm anything and see if it can find the hedging
 init_option_holdings: 100
 init_wealth: 0  # no initial wealth, we borrow money to buy stocks
-gbm_mu: 0.00  # we assume 5 rebalances per day, that amounts to 0.1, or 10% annual return
-gbm_sigma: 0.15  # we assume 5 rebalances, that amounts to roughly 20% annual volatility
+gbm_mu: 0.02  # we assume 5 rebalances per day, that amounts to 0.1, or 10% annual return
+gbm_sigma: 0.09  # we assume 5 rebalances, that amounts to roughly 20% annual volatility
 gbm_r: 0.0  # no interest rate in very short term
 
 episode_length: 50
-num_out_of_sample_path: 1000
+num_out_of_sample_path: 10000
 
 # Parameters relating to reward function and action space
-reward_kappa: 0.5 # *
+reward_kappa: 0.01 # *
 reward_clip_min: -200  # calculating reward - if stock prices goes up or down to 2 or 3 sigmas, what the reward would be *
 reward_clip_max: 200
 action_min: -100
 action_max: 100
 
 # Parameters relating to training
-data_reuse_num_episodes: 100
-total_training_timesteps: 125000
-learning_rate: 0.01 # PPO, DQN
+data_reuse_num_episodes: 10000
+total_training_timesteps: 12500000
+learning_rate: 0.001 # DQN
 
 # PPO model hyperparameters -- these should be iterated over (on the command-line) using multirun
-gamma: 0.9999 # PPO, DDPG, DQN
-gae_lambda: 0.9 # PPO
-ent_coef: 0.2 # PPO
-vf_coef: 0.5 # PPO 
-max_grad_norm: 0.5 # PPO, DQN
-net_arch: [32, 32, 32, 32, 32] # PPO, DQN *
+batch_size: 32 # DQN
+gamma: 0.99 # DQN
+tau: 0.005 # DQN
+gradient_steps: -1 # DQN, DDPG
+max_grad_norm: 0.5 # DQN
+net_arch_length: 5 # DQN
+net_arch_size: 32 # DQN
 
-tau: 0.005 # DDPG
 train_freq: 1 # DDPG
-gradient_steps: -1 # DDPG
 learning_starts: 500 # DDPG
+net_arch: [32, 32, 32, 32, 32] # DDPG
 
-OUstd: 0.15 # DDPG
-OUtheta: 0.0 # DDPG < 1
+OUstd: 50 # DDPG
+OUtheta: 0.00 # DDPG < 1
 OUdt: 0.3 # DDPG
+
+
