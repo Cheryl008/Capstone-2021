@@ -156,24 +156,20 @@ def main():
     for k, v in cfg.items():
         logging.info(f"\t{k} = {v}")
 
-    policy_kwargs = {"activation_fn": nn.ReLU, "net_arch": [32]*5}
+    policy_kwargs = {"activation_fn": nn.ReLU, "net_arch": [cfg["net_arch_size"]] * cfg["net_arch_length"]}
 
-    DQN_HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'max_grad_norm')
+    DQN_HYPERPARAM_KEYS = ('learning_rate', 'batch_size', 'tau', 'gamma', 'gradient_steps', 'max_grad_norm')
     dqn_hyperparams_dict = {k: cfg[k] for k in DQN_HYPERPARAM_KEYS}    
-    model = DQN("MlpPolicy", env, verbose=1, policy_kwargs=policy_kwargs, **dqn_hyperparams_dict)
+    model = DQN("MlpPolicy", env, verbose=2, policy_kwargs=policy_kwargs, **dqn_hyperparams_dict)
 
-    logger_callback = LoggerCallback(save_path=os.path.join(save_dir, "rl_logs.json"), save_freq=100000)
+    logger_callback = LoggerCallback(save_path=os.path.join(save_dir, "rl_logs.json"), save_freq=10000)
     action_fn_observation_grid = get_evaluation_paths(cfg)
     logging.info("Getting eval paths")
     with open(os.path.join(save_dir, "eval_path.pkl"), "w+b") as f:
         pickle.dump(action_fn_observation_grid, f)
 
     evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=[os.path.join(save_dir, "action_fn_logs.h5"), os.path.join(save_dir, "policy_result_logs.h5")], save_freq=10000)
-    # action_fn_observation_grid: List[Valuation] = get_observation_grid(env)
-    # action_fn_callback = ActionFunctionCallback(model, env, action_fn_observation_grid, save_path=os.path.join(save_dir, "action_fn_logs.h5"), save_freq=10_000)
-    # checkpoint_callback = CheckpointCallback(save_freq=20_000, save_path=save_dir, name_prefix='model_checkpoint')
-    # N_YEARS_TRAINING = 50_000
-    # TOTAL_TRAINING_TIMESTEPS = N_YEARS_TRAINING*TRADING_DAYS_IN_YEAR
+    
     model.learn(total_timesteps=cfg['total_training_timesteps'], callback=[logger_callback, evaluator_callback])
 
     with open(os.path.join(save_dir, "training_env.pkl"), "w+b") as f:

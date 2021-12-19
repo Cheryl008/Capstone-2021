@@ -179,11 +179,6 @@ def main():
         pickle.dump(action_fn_observation_grid, f)
 
     evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=[os.path.join(save_dir, "action_fn_logs.h5"), os.path.join(save_dir, "policy_result_logs.h5")], save_freq=10000)
-
-    # checkpoint_callback = CheckpointCallback(save_freq=20_000, save_path=save_dir, name_prefix='model_checkpoint')
-    # N_YEARS_TRAINING = 50_000
-    # TOTAL_TRAINING_TIMESTEPS = N_YEARS_TRAINING*TRADING_DAYS_IN_YEAR
-    # model.learn(total_timesteps=cfg['total_training_timesteps'], callback=[logger_callback, action_fn_callback])
     model.learn(total_timesteps=cfg['total_training_timesteps'], callback=[logger_callback, evaluator_callback])
 
     with open(os.path.join(save_dir, "training_env.pkl"), "w+b") as f:

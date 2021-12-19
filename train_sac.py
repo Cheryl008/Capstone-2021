@@ -166,7 +166,7 @@ def main():
 
     policy_kwargs = {"activation_fn": nn.ReLU, "net_arch": [32]*5}
     # action_noise = OUnoise(mean=np.zeros(1, ), sigma=cfg['OUstd'] * np.ones(1, ), theta=cfg['OUtheta'], dt=cfg['OUdt'])
-    SAC_HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'tau', 'train_freq', 'gradient_steps', 'learning_starts')
+    SAC_HYPERPARAM_KEYS = ('learning_rate', 'gamma', 'learning_starts')
     sac_hyperparams_dict = {k: cfg[k] for k in SAC_HYPERPARAM_KEYS}
     # model = DDPG("MlpPolicy", env, action_noise=action_noise, verbose=1)
     model = SAC("MlpPolicy", env, verbose=1, policy_kwargs=policy_kwargs, **sac_hyperparams_dict)
@@ -178,7 +178,7 @@ def main():
     with open(os.path.join(save_dir, "eval_path.pkl"), "w+b") as f:
         pickle.dump(action_fn_observation_grid, f)
 
-    evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=[os.path.join(save_dir, "action_fn_logs.h5"), os.path.join(save_dir, "policy_result_logs.h5")], save_freq=100)
+    evaluator_callback = EvaluationFunctionCallBack(model, env, action_fn_observation_grid, cfg, save_path=[os.path.join(save_dir, "action_fn_logs.h5"), os.path.join(save_dir, "policy_result_logs.h5")], save_freq=10000)
 
     # checkpoint_callback = CheckpointCallback(save_freq=20_000, save_path=save_dir, name_prefix='model_checkpoint')
     # N_YEARS_TRAINING = 50_000
